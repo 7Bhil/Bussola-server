@@ -22,9 +22,28 @@ const PORT = process.env.PORT || 5000;
 // --- Middlewares ---
 app.use(helmet());
 
-// Configuration CORS
+// Configuration CORS pour supporter plusieurs origines (Client, Admin et Localhost)
+const allowedOrigins = [
+  'https://bussola-client.vercel.app',
+  'https://bussola-admin-nu.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174'
+];
+
+if (process.env.CLIENT_URL) {
+  const extraOrigins = process.env.CLIENT_URL.split(',').map(o => o.trim());
+  allowedOrigins.push(...extraOrigins);
+}
+
 const corsOptions = {
-  origin: process.env.CLIENT_URL || '*', // Idéalement, restreindre à l'URL de ton site en prod
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS Error: Origin ${origin} not allowed`));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
