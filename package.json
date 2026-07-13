@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build": "echo 'No build step required'",
+    "start": "node index.js",
     "dev": "nodemon index.js",
     "seed-admin": "node scripts/seedAdmin.js",
     "cleanup-admins": "node scripts/cleanupAdmins.js",
