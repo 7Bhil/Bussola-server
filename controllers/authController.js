@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const Traffic = require('../models/Traffic');
 const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res, next) => {
@@ -61,14 +60,6 @@ exports.login = async (req, res, next) => {
     user.lastLoginAt = new Date();
     user.lastDevice = req.headers['user-agent'] || 'Appareil inconnu';
     await user.save();
-
-    // Incrémenter le compteur de connexions dans le trafic
-    const today = new Date().toISOString().split('T')[0];
-    await Traffic.findOneAndUpdate(
-      { date: today },
-      { $inc: { logins: 1 } },
-      { upsert: true }
-    ).catch(err => console.error("Erreur track login:", err));
 
     const token = jwt.sign(
       { userId: user._id, username: user.username },
