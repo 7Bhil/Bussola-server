@@ -8,7 +8,8 @@ const rateLimit = require('express-rate-limit');
 const strictLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
-  message: { message: 'Limite de tentatives atteinte. Réessayez dans une heure.' }
+  message: { message: 'Limite de tentatives atteinte. Réessayez dans une heure.' },
+  skip: (req) => req.method === 'OPTIONS'
 });
 
 router.post('/newsletter', validate('newsletter'), formController.subscribeNewsletter);

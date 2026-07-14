@@ -48,8 +48,6 @@ const corsOptions = {
 
 // CORS doit être avant helmet pour que les requêtes preflight OPTIONS passent
 app.use(cors(corsOptions));
-// Répondre explicitement aux preflight OPTIONS pour toutes les routes
-app.options('*', cors(corsOptions));
 
 // --- Middlewares ---
 app.use(helmet({
@@ -59,11 +57,12 @@ app.use(helmet({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Limiteur de requêtes global
+// Limiteur de requêtes global (exclut les requêtes OPTIONS preflight)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { message: 'Trop de requêtes, veuillez réessayer plus tard.' }
+  message: { message: 'Trop de requêtes, veuillez réessayer plus tard.' },
+  skip: (req) => req.method === 'OPTIONS'
 });
 app.use('/api/', globalLimiter);
 

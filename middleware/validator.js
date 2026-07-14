@@ -75,6 +75,11 @@ const schemas = {
 
 const validate = (schemaName, isUpdate = false) => {
   return (req, res, next) => {
+    // Ignorer les requêtes OPTIONS preflight CORS
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+
     let schema = schemas[schemaName];
     
     // Si c'est une mise à jour (PATCH), on rend tous les champs optionnels
