@@ -25,8 +25,7 @@ const projectSchema = new mongoose.Schema({
   },
   pillar: {
     type: String,
-    enum: ['dssr', 'paix', 'leadership'],
-    required: false
+    default: null
   }
 }, {
   timestamps: true

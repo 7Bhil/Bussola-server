@@ -56,6 +56,10 @@ exports.login = async (req, res, next) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(401).json({ message: 'Identifiants invalides' });
 
+    // Stocker l'ancienne valeur avant mise à jour
+    const previousLoginAt = user.lastLoginAt;
+    const previousDevice = user.lastDevice;
+
     // Mise à jour de la dernière connexion
     user.lastLoginAt = new Date();
     user.lastDevice = req.headers['user-agent'] || 'Appareil inconnu';
@@ -67,7 +71,7 @@ exports.login = async (req, res, next) => {
       { expiresIn: '24h' }
     );
 
-    res.json({ token, username: user.username });
+    res.json({ token, username: user.username, previousLoginAt, previousDevice });
   } catch (error) {
     next(error);
   }
