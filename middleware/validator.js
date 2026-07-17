@@ -69,6 +69,7 @@ const schemas = {
     coverImage: Joi.string().allow('', null),
     color: Joi.string().allow('', null),
     order: Joi.number().integer().min(0).default(0),
+    pillar: Joi.string().valid('dssr', 'paix', 'leadership').allow('', null),
     archived: Joi.boolean().default(false)
   })
 };
