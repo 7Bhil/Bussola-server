@@ -1,6 +1,9 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCK_TIME_MS = 30 * 60 * 1000;
+
 exports.register = async (req, res, next) => {
   const { username, password, masterPassword } = req.body;
   
@@ -49,18 +52,49 @@ exports.getUsers = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
   const { username, password } = req.body;
+  const normalizedUsername = typeof username === 'string' ? username.trim() : username;
+
   try {
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: normalizedUsername });
     if (!user) return res.status(401).json({ message: 'Identifiants invalides' });
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(401).json({ message: 'Identifiants invalides' });
+    const now = Date.now();
+    if (user.lockUntil && user.lockUntil.getTime() > now) {
+      const retryAfter = Math.ceil((user.lockUntil.getTime() - now) / 1000);
+      return res.status(423).json({
+        message: 'Compte temporairement verrouillé après trop de tentatives. Réessayez plus tard.',
+        retryAfter
+      });
+    }
 
-    // Stocker l'ancienne valeur avant mise à jour
+    if (user.lockUntil && user.lockUntil.getTime() <= now) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+
+      if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+        user.lockUntil = new Date(now + LOGIN_LOCK_TIME_MS);
+        await user.save();
+
+        return res.status(423).json({
+          message: 'Compte temporairement verrouillé après trop de tentatives. Réessayez dans 30 minutes.',
+          retryAfter: Math.ceil(LOGIN_LOCK_TIME_MS / 1000)
+        });
+      }
+
+      await user.save();
+      return res.status(401).json({ message: 'Identifiants invalides' });
+    }
+
     const previousLoginAt = user.lastLoginAt;
     const previousDevice = user.lastDevice;
 
-    // Mise à jour de la dernière connexion
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
     user.lastLoginAt = new Date();
     user.lastDevice = req.headers['user-agent'] || 'Appareil inconnu';
     await user.save();

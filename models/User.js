@@ -22,6 +22,13 @@ const userSchema = new mongoose.Schema({
   },
   lastDevice: {
     type: String
+  },
+  loginAttempts: {
+    type: Number,
+    default: 0
+  },
+  lockUntil: {
+    type: Date
   }
 }, {
   timestamps: true
