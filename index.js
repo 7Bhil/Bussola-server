@@ -12,6 +12,7 @@ const actionRoutes = require('./routes/actionRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const formRoutes = require('./routes/formRoutes');
 const testimonialRoutes = require('./routes/testimonialRoutes');
+const trafficRoutes = require('./routes/trafficRoutes');
 
 dotenv.config();
 
@@ -78,6 +79,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/actions', actionRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/testimonials', testimonialRoutes);
+app.use('/api/traffic', trafficRoutes);
 app.use('/api', formRoutes); // Newsletter et Contact
 
 app.get('/', (req, res) => {

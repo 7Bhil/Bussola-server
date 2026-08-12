@@ -6,6 +6,8 @@ const auth = require('../middleware/auth');
 router.post('/track-visit', trafficController.trackVisit);
 router.post('/track-pageview', trafficController.trackPageView);
 router.post('/track-admin', auth, trafficController.trackAdminVisit);
+router.post('/track-login', trafficController.trackLogin);
 router.get('/stats', auth, trafficController.getStats);
+router.get('/summary', auth, trafficController.getSummary);
 
 module.exports = router;

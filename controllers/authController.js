@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const Traffic = require('../models/Traffic');
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_TIME_MS = 30 * 60 * 1000;
@@ -106,6 +107,14 @@ exports.login = async (req, res, next) => {
     );
 
     res.json({ token, username: user.username, previousLoginAt, previousDevice });
+
+    // Tracker le login (fire-and-forget, sans bloquer la réponse)
+    const today = new Date().toISOString().split('T')[0];
+    Traffic.findOneAndUpdate(
+      { date: today },
+      { $inc: { logins: 1 } },
+      { upsert: true, new: true }
+    ).catch(() => {}); // silencieux si MongoDB est indisponible
   } catch (error) {
     next(error);
   }
