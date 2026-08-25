@@ -3,7 +3,7 @@ const Action = require('../models/Action');
 // Récupérer les actions non archivées (Public)
 exports.getAllActions = async (req, res, next) => {
   try {
-    const actions = await Action.find({ archived: false }).sort({ createdAt: -1 });
+    const actions = await Action.find({ archived: false }).populate('project').sort({ createdAt: -1 });
     res.json(actions);
   } catch (error) {
     next(error);
@@ -13,7 +13,7 @@ exports.getAllActions = async (req, res, next) => {
 // Récupérer TOUTES les actions (Admin)
 exports.getAdminActions = async (req, res, next) => {
   try {
-    const actions = await Action.find().sort({ createdAt: -1 });
+    const actions = await Action.find().populate('project').sort({ createdAt: -1 });
     res.json(actions);
   } catch (error) {
     next(error);
@@ -22,7 +22,7 @@ exports.getAdminActions = async (req, res, next) => {
 
 exports.getActionById = async (req, res, next) => {
   try {
-    const action = await Action.findById(req.params.id);
+    const action = await Action.findById(req.params.id).populate('project');
     if (!action) return res.status(404).json({ message: 'Action non trouvée' });
     res.json(action);
   } catch (error) {
