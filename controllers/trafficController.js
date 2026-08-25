@@ -1,13 +1,15 @@
-const Traffic = require('../models/Traffic');
+const prisma = require('../lib/prisma');
+
+const formatTraffic = (t) => t ? { ...t, _id: t.id } : null;
 
 exports.trackVisit = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    await Traffic.findOneAndUpdate(
-      { date: today },
-      { $inc: { visits: 1 } },
-      { upsert: true, new: true }
-    );
+    await prisma.traffic.upsert({
+      where: { date: today },
+      update: { visits: { increment: 1 } },
+      create: { date: today, visits: 1 }
+    });
     res.status(200).json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -17,11 +19,11 @@ exports.trackVisit = async (req, res) => {
 exports.trackPageView = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    await Traffic.findOneAndUpdate(
-      { date: today },
-      { $inc: { pageViews: 1 } },
-      { upsert: true, new: true }
-    );
+    await prisma.traffic.upsert({
+      where: { date: today },
+      update: { pageViews: { increment: 1 } },
+      create: { date: today, pageViews: 1 }
+    });
     res.status(200).json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,11 +33,11 @@ exports.trackPageView = async (req, res) => {
 exports.trackAdminVisit = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    await Traffic.findOneAndUpdate(
-      { date: today },
-      { $inc: { adminVisits: 1 } },
-      { upsert: true, new: true }
-    );
+    await prisma.traffic.upsert({
+      where: { date: today },
+      update: { adminVisits: { increment: 1 } },
+      create: { date: today, adminVisits: 1 }
+    });
     res.status(200).json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -45,11 +47,11 @@ exports.trackAdminVisit = async (req, res) => {
 exports.trackLogin = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    await Traffic.findOneAndUpdate(
-      { date: today },
-      { $inc: { logins: 1 } },
-      { upsert: true, new: true }
-    );
+    await prisma.traffic.upsert({
+      where: { date: today },
+      update: { logins: { increment: 1 } },
+      create: { date: today, logins: 1 }
+    });
     res.status(200).json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -59,8 +61,11 @@ exports.trackLogin = async (req, res) => {
 // Retourne les 30 derniers jours triés du plus récent au plus ancien
 exports.getStats = async (req, res) => {
   try {
-    const stats = await Traffic.find().sort({ date: -1 }).limit(30);
-    res.status(200).json(stats);
+    const stats = await prisma.traffic.findMany({
+      orderBy: { date: 'desc' },
+      take: 30
+    });
+    res.status(200).json(stats.map(formatTraffic));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -72,12 +77,10 @@ exports.getSummary = async (req, res) => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // Semaine courante : J-6 → aujourd'hui
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - 6);
     const weekStartStr = weekStart.toISOString().split('T')[0];
 
-    // Semaine précédente : J-13 → J-7
     const prevWeekEnd = new Date(today);
     prevWeekEnd.setDate(today.getDate() - 7);
     const prevWeekStart = new Date(today);
@@ -85,11 +88,13 @@ exports.getSummary = async (req, res) => {
     const prevWeekStartStr = prevWeekStart.toISOString().split('T')[0];
     const prevWeekEndStr = prevWeekEnd.toISOString().split('T')[0];
 
-    const [thisWeek, lastWeek, allTime] = await Promise.all([
-      Traffic.find({ date: { $gte: weekStartStr, $lte: todayStr } }),
-      Traffic.find({ date: { $gte: prevWeekStartStr, $lte: prevWeekEndStr } }),
-      Traffic.find().sort({ date: -1 }).limit(30),
+    const [thisWeek, lastWeek, allTimeRaw] = await Promise.all([
+      prisma.traffic.findMany({ where: { date: { gte: weekStartStr, lte: todayStr } } }),
+      prisma.traffic.findMany({ where: { date: { gte: prevWeekStartStr, lte: prevWeekEndStr } } }),
+      prisma.traffic.findMany({ orderBy: { date: 'desc' }, take: 30 }),
     ]);
+
+    const allTime = allTimeRaw.map(formatTraffic);
 
     const sum = (arr, key) => arr.reduce((a, b) => a + (b[key] || 0), 0);
 
@@ -117,7 +122,7 @@ exports.getSummary = async (req, res) => {
       lastWeekViews,
       visitsTrend: trend(thisWeekVisits, lastWeekVisits),
       viewsTrend: trend(thisWeekViews, lastWeekViews),
-      daily: allTime.slice().reverse(), // du plus ancien au plus récent pour les graphes
+      daily: allTime.slice().reverse(),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

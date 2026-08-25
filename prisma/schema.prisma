@@ -1,0 +1,110 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  password      String
+  role          String    @default("admin")
+  lastLoginAt   DateTime?
+  lastDevice    String?
+  loginAttempts Int       @default(0)
+  lockUntil     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  title       String   @unique
+  description String   @db.Text
+  coverImage  String   @db.Text
+  color       String   @default("#3498db")
+  order       Int      @default(0)
+  pillar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  actions     Action[]
+}
+
+model Action {
+  id            String    @id @default(uuid())
+  title         String
+  description   String    @db.Text
+  images        String[]
+  status        String    @default("En cours")
+  location      String
+  category      String
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startDate     DateTime?
+  endDate       DateTime?
+  beneficiaries String?
+  archived      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model News {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  summary   String?  @db.Text
+  image     String?  @db.Text
+  category  String   @default("Information")
+  author    String   @default("Équipe Busola")
+  date      DateTime @default(now())
+  published Boolean  @default(true)
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Testimonial {
+  id            String   @id @default(uuid())
+  name          String
+  role          String
+  message       String   @db.Text
+  image         String?  @db.Text
+  location      String?
+  rating        Int      @default(5)
+  showOnHome    Boolean  @default(true)
+  showOnActions Boolean  @default(false)
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  type      String
+  name      String
+  email     String
+  subject   String?
+  message   String   @db.Text
+  status    String   @default("nouveau")
+  createdAt DateTime @default(now())
+}
+
+model Subscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Traffic {
+  id          String   @id @default(uuid())
+  date        String   @unique
+  visits      Int      @default(0)
+  pageViews   Int      @default(0)
+  adminVisits Int      @default(0)
+  logins      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

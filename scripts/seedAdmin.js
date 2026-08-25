@@ -1,31 +1,29 @@
-const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
-const User = require('../models/User');
+const prisma = require('../lib/prisma');
 
 async function run() {
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/busola';
-  await mongoose.connect(uri);
-  console.log('Connected to MongoDB:', uri);
-
   const username = process.env.SEED_ADMIN_USERNAME || 'admin123';
   const password = process.env.SEED_ADMIN_PASSWORD || 'admin123';
 
-  const existing = await User.findOne({ username });
+  const existing = await prisma.user.findUnique({ where: { username } });
   if (existing) {
     console.log(`Admin '${username}' already exists. Nothing to do.`);
   } else {
-    const user = new User({ username, password, role: 'admin' });
-    await user.save();
-    console.log(`Created admin '${username}'.`);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.user.create({
+      data: { username, password: hashedPassword, role: 'admin' }
+    });
+    console.log(`Created admin '${username}' with PostgreSQL/Prisma.`);
   }
 
-  await mongoose.disconnect();
+  await prisma.$disconnect();
 }
 
 run().catch(err => {
   console.error(err);
-  mongoose.disconnect().finally(() => process.exit(1));
+  prisma.$disconnect().finally(() => process.exit(1));
 });
