@@ -1,17 +1,11 @@
 const mongoose = require('mongoose');
 const User = require('./models/User');
 const dotenv = require('dotenv');
-const path = require('path');
 
 dotenv.config();
 
-const username = process.argv[2];
-const password = process.argv[3];
-
-if (!username || !password) {
-  console.log('Usage: node seedAdmin.js <username> <password>');
-  process.exit(1);
-}
+const username = process.argv[2] || 'isti';
+const password = process.argv[3] || 'isti';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/busola';
 
@@ -20,9 +14,13 @@ async function seed() {
     await mongoose.connect(MONGODB_URI);
     console.log('Connecté à MongoDB');
 
-    const existing = await User.findOne({ username });
+    let existing = await User.findOne({ username });
     if (existing) {
-      console.log(`L'utilisateur ${username} existe déjà.`);
+      existing.password = password;
+      existing.loginAttempts = 0;
+      existing.lockUntil = undefined;
+      await existing.save();
+      console.log(`Utilisateur ${username} mis à jour avec le mot de passe spécifié.`);
     } else {
       const user = new User({
         username,

@@ -1,15 +1,15 @@
-const prisma = require('../lib/prisma');
+const Subscriber = require('../models/Subscriber');
+const Message = require('../models/Message');
 const mailer = require('../utils/mailer');
-
-const formatItem = (i) => i ? { ...i, _id: i.id } : null;
 
 exports.subscribeNewsletter = async (req, res, next) => {
   const { email } = req.body;
   try {
-    const existing = await prisma.subscriber.findUnique({ where: { email } });
+    const existing = await Subscriber.findOne({ email });
     if (existing) return res.status(400).json({ message: 'Cet email est déjà inscrit' });
 
-    await prisma.subscriber.create({ data: { email } });
+    const newSubscriber = new Subscriber({ email });
+    await newSubscriber.save();
     res.status(201).json({ message: 'Inscription réussie !' });
   } catch (error) {
     next(error);
@@ -18,18 +18,10 @@ exports.subscribeNewsletter = async (req, res, next) => {
 
 exports.sendContactMessage = async (req, res, next) => {
   try {
-    const { type, name, email, subject, message, status } = req.body;
-    const newMessage = await prisma.message.create({
-      data: {
-        type: type || 'contact',
-        name,
-        email,
-        subject: subject || null,
-        message,
-        status: status || 'nouveau'
-      }
-    });
+    const newMessage = new Message(req.body);
+    await newMessage.save();
 
+    // Notification admin
     mailer.sendContactNotification({
       name: newMessage.name,
       email: newMessage.email,
@@ -45,10 +37,8 @@ exports.sendContactMessage = async (req, res, next) => {
 
 exports.getSubscribers = async (req, res, next) => {
   try {
-    const subscribers = await prisma.subscriber.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(subscribers.map(formatItem));
+    const subscribers = await Subscriber.find().sort({ createdAt: -1 });
+    res.json(subscribers);
   } catch (error) {
     next(error);
   }
@@ -56,10 +46,8 @@ exports.getSubscribers = async (req, res, next) => {
 
 exports.getContactMessages = async (req, res, next) => {
   try {
-    const messages = await prisma.message.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(messages.map(formatItem));
+    const messages = await Message.find().sort({ createdAt: -1 });
+    res.json(messages);
   } catch (error) {
     next(error);
   }

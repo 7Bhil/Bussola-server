@@ -1,11 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-// Database connection (PostgreSQL via Prisma)
-const prisma = require('./lib/prisma');
-prisma.$connect()
-  .then(() => console.log('Connecté à PostgreSQL avec Prisma ORM'))
-  .catch(err => console.error('Erreur de connexion PostgreSQL:', err.message));
+const mongoose = require('mongoose');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
@@ -16,7 +12,8 @@ const actionRoutes = require('./routes/actionRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const formRoutes = require('./routes/formRoutes');
 const testimonialRoutes = require('./routes/testimonialRoutes');
-const trafficRoutes = require('./routes/trafficRoutes');
+const siteSettingsRoutes = require('./routes/siteSettingsRoutes');
+const seedDefaultAdmin = require('./utils/seedDefaultAdmin');
 
 dotenv.config();
 
@@ -71,7 +68,14 @@ const globalLimiter = rateLimit({
 });
 app.use('/api/', globalLimiter);
 
-
+// Database connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/busola';
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('Connecté à MongoDB');
+    seedDefaultAdmin();
+  })
+  .catch(err => console.error('Erreur de connexion MongoDB:', err));
 
 // --- Utilisation des Routes ---
 app.use('/api/auth', authRoutes);
@@ -79,7 +83,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/actions', actionRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/testimonials', testimonialRoutes);
-app.use('/api/traffic', trafficRoutes);
+app.use('/api', siteSettingsRoutes);
 app.use('/api', formRoutes); // Newsletter et Contact
 
 app.get('/', (req, res) => {
