@@ -1,4 +1,11 @@
-const prisma = require('../lib/prisma');
+const SiteSettingsMongoose = require('../models/SiteSettings');
+
+let prisma = null;
+try {
+  prisma = require('../lib/prisma');
+} catch (e) {
+  prisma = null;
+}
 
 const DEFAULT_SETTINGS = {
   colors: {
@@ -121,14 +128,23 @@ const DEFAULT_SETTINGS = {
 // GET /api/settings
 exports.getSettings = async (req, res, next) => {
   try {
-    let record = await prisma.siteSettings.findFirst();
-    if (!record) {
-      record = await prisma.siteSettings.create({
-        data: { data: DEFAULT_SETTINGS }
-      });
+    if (process.env.DATABASE_URL && prisma) {
+      let record = await prisma.siteSettings.findFirst();
+      if (!record) {
+        record = await prisma.siteSettings.create({
+          data: { data: DEFAULT_SETTINGS }
+        });
+      }
+      const settingsData = record.data || DEFAULT_SETTINGS;
+      return res.json({ id: record.id, _id: record.id, ...settingsData });
     }
-    const settingsData = record.data || DEFAULT_SETTINGS;
-    res.json({ id: record.id, _id: record.id, ...settingsData });
+
+    let settings = await SiteSettingsMongoose.findOne();
+    if (!settings) {
+      settings = new SiteSettingsMongoose({});
+      await settings.save();
+    }
+    res.json(settings);
   } catch (error) {
     next(error);
   }
@@ -137,27 +153,38 @@ exports.getSettings = async (req, res, next) => {
 // PUT /api/settings
 exports.updateSettings = async (req, res, next) => {
   try {
-    let record = await prisma.siteSettings.findFirst();
-    let currentData = record ? (record.data || DEFAULT_SETTINGS) : DEFAULT_SETTINGS;
+    if (process.env.DATABASE_URL && prisma) {
+      let record = await prisma.siteSettings.findFirst();
+      let currentData = record ? (record.data || DEFAULT_SETTINGS) : DEFAULT_SETTINGS;
+      const mergedData = { ...currentData, ...req.body };
 
-    const mergedData = { ...currentData, ...req.body };
+      if (!record) {
+        record = await prisma.siteSettings.create({
+          data: { data: mergedData }
+        });
+      } else {
+        record = await prisma.siteSettings.update({
+          where: { id: record.id },
+          data: { data: mergedData }
+        });
+      }
 
-    if (!record) {
-      record = await prisma.siteSettings.create({
-        data: { data: mergedData }
-      });
-    } else {
-      record = await prisma.siteSettings.update({
-        where: { id: record.id },
-        data: { data: mergedData }
+      const updatedData = record.data;
+      return res.json({
+        message: 'Configuration du site mise à jour avec succès !',
+        settings: { id: record.id, _id: record.id, ...updatedData }
       });
     }
 
-    const updatedData = record.data;
-    res.json({
-      message: 'Configuration du site mise à jour avec succès !',
-      settings: { id: record.id, _id: record.id, ...updatedData }
-    });
+    let settings = await SiteSettingsMongoose.findOne();
+    if (!settings) {
+      settings = new SiteSettingsMongoose(req.body);
+    } else {
+      Object.assign(settings, req.body);
+    }
+
+    const updatedSettings = await settings.save();
+    res.json({ message: 'Configuration du site mise à jour avec succès !', settings: updatedSettings });
   } catch (error) {
     next(error);
   }
